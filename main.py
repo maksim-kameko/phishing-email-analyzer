@@ -2,9 +2,18 @@ import email
 import hashlib
 import os
 import re
+from urllib.parse import urlparse
 
 path = './'
 listing = os.listdir(path)
+
+with open("shortener") as fh:
+    SHORTENERS = {
+        line.strip()
+        for line in fh
+        if line.strip() and not line.startswith("#")
+    }
+print(len(SHORTENERS), "shorteners loaded")
 
 for file in listing:
     if file.lower().endswith(".eml"):
@@ -22,4 +31,14 @@ for file in listing:
                 body = part.get_payload(decode=True).decode(errors="replace")
                 urls = re.findall(r'https?://[^\s"\'<>)]+', body)
                 for u in urls:
-                    print(u)
+                    host = urlparse(u).hostname
+                    print(u, host)
+                    reasons = []
+                    if  re.fullmatch(r'\d{1,3}(\.\d{1,3}){3}', host):
+                        reasons.append("raw IP")
+                    if "xn--" in host:
+                        reasons.append("punycode")
+                    if host in SHORTENERS:
+                        reasons.append("shortener")
+                    if reasons:
+                        print(f"SUSPICIOUS {u} - {reasons}")
