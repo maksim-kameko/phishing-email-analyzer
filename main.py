@@ -2,10 +2,22 @@ import email
 import hashlib
 import os
 import re
+import difflib
 from urllib.parse import urlparse
 
 path = './'
 listing = os.listdir(path)
+
+BRANDS = {
+    "paypal.com", "google.com", "microsoft.com", "apple.com",
+    "amazon.com", "netflix.com", "facebook.com", "instagram.com",
+    "outlook.com", "bankofamerica.com",
+}
+
+ALLOWLIST = {
+    "google.com", "googleapis.com", "gstatic.com", "googletagmanager.com",
+    "microsoft.com", "apple.com", "cloudflare.com", "w3.org",
+}
 
 with open("shortener") as fh:
     SHORTENERS = {
@@ -40,5 +52,12 @@ for file in listing:
                         reasons.append("punycode")
                     if host in SHORTENERS:
                         reasons.append("shortener")
+                    for brand in BRANDS:
+                        reg = ".".join(host.split(".")[-2:]) #The www. drags the similarity ratio down, so real lookalikes might slip under 0.8
+                        ratio = difflib.SequenceMatcher(None, reg, brand).ratio()
+                        if reg in ALLOWLIST:
+                            continue  # trusted domain
+                        if ratio >= 0.8 and reg != brand:
+                            reasons.append(f"lookalike of {brand}")
                     if reasons:
                         print(f"SUSPICIOUS {u} - {reasons}")
